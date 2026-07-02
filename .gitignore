@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+env/
+venv/
+.venv/
+
+# Secrets & local config
+.env
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+
+# OS
+.DS_Store

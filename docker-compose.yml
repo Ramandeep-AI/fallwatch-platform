@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    container_name: fallwatch-db
+    environment:
+      POSTGRES_USER: fallwatch
+      POSTGRES_PASSWORD: fallwatch_dev_password
+      POSTGRES_DB: fallwatch
+    ports:
+      - "5432:5432"
+    volumes:
+      - fallwatch_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fallwatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fallwatch_pgdata:
