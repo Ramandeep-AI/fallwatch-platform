@@ -22,9 +22,9 @@ Camera + detection model  →  FastAPI (REST)  →  PostgreSQL
 |---|---|---|
 | Database | PostgreSQL 16 (Docker), SQLAlchemy 2, Alembic migrations | ✅ |
 | REST API | FastAPI + Pydantic, OpenAPI docs | ✅ events, devices, statistics |
-| Tests & CI | pytest (in-memory DB) + GitHub Actions on every push | ✅ 12 tests |
-| Dashboard | Streamlit + Plotly: metrics, filterable events, analytics, device health | ✅ |
-| Alerts | SMS/email on fall events | planned |
+| Tests & CI | pytest (in-memory DB) + GitHub Actions on every push | ✅ 17 tests |
+| Dashboard | Streamlit + Plotly: metrics, filterable events, analytics, device health, alert management | ✅ |
+| Alerts | Automatic on high-confidence falls; console + email channels, acknowledge workflow | ✅ |
 | Deployment | AWS EC2 + RDS, Docker Compose | planned |
 
 ## Getting started
@@ -94,6 +94,17 @@ run in CI on every push.
 | GET | `/api/v1/stats/summary` | headline metrics (totals, today, avg confidence) |
 | GET | `/api/v1/stats/daily` | events and falls per day |
 | GET | `/api/v1/stats/hourly` | event counts by hour of day |
+| GET | `/api/v1/alerts` | list alerts (filter by acknowledged state) |
+| POST | `/api/v1/alerts/{id}/acknowledge` | mark an alert as handled |
+
+## Alerts
+
+Fall events at or above `ALERT_MIN_CONFIDENCE` (default 0.7) automatically
+create alert records and dispatch notifications in a background task, so the
+detection client never waits on delivery. Channels are pluggable: the console
+channel is always active; configuring `SMTP_HOST` (see `.env.example`)
+enables email. Caregivers acknowledge alerts from the dashboard's Alerts
+page.
 
 ## Detection integration
 
