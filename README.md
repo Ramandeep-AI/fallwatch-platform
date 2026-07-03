@@ -1,5 +1,7 @@
 # FallWatch Platform
 
+[![tests](https://github.com/Ramandeep-AI/fallwatch-platform/actions/workflows/test.yml/badge.svg)](https://github.com/Ramandeep-AI/fallwatch-platform/actions/workflows/test.yml)
+
 End-to-end monitoring platform built around a real-time AI fall detection
 system: detection events flow from camera-side inference into a PostgreSQL
 database via a REST API, and are surfaced through an analytics dashboard and
@@ -19,9 +21,9 @@ Camera + detection model  →  FastAPI (REST)  →  PostgreSQL
 | Component | Technology | Status |
 |---|---|---|
 | Database | PostgreSQL 16 (Docker), SQLAlchemy 2, Alembic migrations | ✅ |
-| REST API | FastAPI + Pydantic, OpenAPI docs | ✅ events + devices |
-| Tests | pytest (in-memory DB, no Docker needed) | ✅ 9 tests |
-| Dashboard | Streamlit + Plotly | planned |
+| REST API | FastAPI + Pydantic, OpenAPI docs | ✅ events, devices, statistics |
+| Tests & CI | pytest (in-memory DB) + GitHub Actions on every push | ✅ 12 tests |
+| Dashboard | Streamlit + Plotly: metrics, filterable events, analytics, device health | ✅ |
 | Alerts | SMS/email on fall events | planned |
 | Deployment | AWS EC2 + RDS, Docker Compose | planned |
 
@@ -48,6 +50,14 @@ uvicorn backend.main:app --reload
 
 Interactive API docs: http://localhost:8000/docs
 
+```bash
+# 6. Run the dashboard (in a second terminal, with the API running)
+cd dashboard && streamlit run app.py
+```
+
+Dashboard: http://localhost:8501 — Overview metrics, filterable event
+explorer, daily/hourly analytics charts, and device health.
+
 ## Tests
 
 ```bash
@@ -67,6 +77,9 @@ run in CI on every push.
 | GET | `/api/v1/events/{id}` | single event with device/person details |
 | DELETE | `/api/v1/events/{id}` | remove an event |
 | GET | `/api/v1/devices` | list registered devices |
+| GET | `/api/v1/stats/summary` | headline metrics (totals, today, avg confidence) |
+| GET | `/api/v1/stats/daily` | events and falls per day |
+| GET | `/api/v1/stats/hourly` | event counts by hour of day |
 
 ## Detection integration
 
