@@ -18,4 +18,5 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run test suite
-        run: pytest -v
+        # python -m adds the repo root to the import path so `import backend` resolves
+        run: python -m pytest -v
