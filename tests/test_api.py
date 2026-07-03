@@ -126,3 +126,40 @@ def test_stats_hourly_covers_all_24_hours(client):
     body = client.get("/api/v1/stats/hourly").json()
     assert len(body) == 24
     assert sum(row["count"] for row in body) == 1
+
+
+def test_high_confidence_fall_creates_alert(client):
+    event_id = make_event(client, event_type="fall", confidence=0.92).json()["id"]
+    alerts = client.get("/api/v1/alerts").json()
+    assert len(alerts) == 1
+    assert alerts[0]["event_id"] == event_id
+    assert alerts[0]["alert_type"] == "console"
+    assert alerts[0]["acknowledged_at"] is None
+    assert alerts[0]["event"]["device"]["name"] == "cam-1"
+
+
+def test_low_confidence_fall_creates_no_alert(client):
+    make_event(client, event_type="fall", confidence=0.55)
+    assert client.get("/api/v1/alerts").json() == []
+
+
+def test_activity_event_creates_no_alert(client):
+    make_event(client, event_type="activity", confidence=0.99)
+    assert client.get("/api/v1/alerts").json() == []
+
+
+def test_acknowledge_alert_is_idempotent(client):
+    make_event(client, event_type="fall", confidence=0.9)
+    alert_id = client.get("/api/v1/alerts").json()[0]["id"]
+
+    first = client.post(f"/api/v1/alerts/{alert_id}/acknowledge").json()
+    assert first["acknowledged_at"] is not None
+    second = client.post(f"/api/v1/alerts/{alert_id}/acknowledge").json()
+    assert second["acknowledged_at"] == first["acknowledged_at"]
+
+    assert client.get("/api/v1/alerts?acknowledged=false").json() == []
+    assert len(client.get("/api/v1/alerts?acknowledged=true").json()) == 1
+
+
+def test_acknowledge_unknown_alert_returns_404(client):
+    assert client.post("/api/v1/alerts/999/acknowledge").status_code == 404
