@@ -39,3 +39,17 @@ def get_events(**filters):
 
 def get_devices():
     return _get("/api/v1/devices")
+
+
+def get_alerts(acknowledged: bool | None = None):
+    params = {}
+    if acknowledged is not None:
+        params["acknowledged"] = acknowledged
+    return _get("/api/v1/alerts", **params)
+
+
+def acknowledge_alert(alert_id: int):
+    resp = requests.post(f"{API_URL}/api/v1/alerts/{alert_id}/acknowledge",
+                         timeout=TIMEOUT)
+    resp.raise_for_status()
+    return resp.json()

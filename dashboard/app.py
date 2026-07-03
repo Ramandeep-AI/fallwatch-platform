@@ -18,7 +18,8 @@ if not api.health_ok():
              "Start it with: uvicorn backend.main:app")
     st.stop()
 
-page = st.sidebar.radio("FallWatch", ["Overview", "Events", "Analytics", "Devices"])
+page = st.sidebar.radio("FallWatch",
+                        ["Overview", "Events", "Analytics", "Devices", "Alerts"])
 st.sidebar.caption(f"API: {api.API_URL}")
 
 
@@ -110,6 +111,38 @@ elif page == "Analytics":
         with right2:
             fig = px.pie(df, names="location", title="Events by location")
             st.plotly_chart(fig, use_container_width=True)
+
+# ---------------- Alerts ----------------
+elif page == "Alerts":
+    st.title("Alerts")
+
+    open_alerts = api.get_alerts(acknowledged=False)
+    st.subheader(f"Open alerts ({len(open_alerts)})")
+    if not open_alerts:
+        st.success("No unacknowledged alerts.")
+    for a in open_alerts:
+        ev = a["event"]
+        col1, col2 = st.columns([5, 1])
+        col1.error(
+            f"**Fall** at {ev['device']['location']} — "
+            f"{ev['timestamp'][:19].replace('T', ' ')} · "
+            f"confidence {ev['confidence']:.2f} · via {a['alert_type']}"
+            + (f" · {ev['person']['name']}" if ev.get("person") else ""))
+        if col2.button("Acknowledge", key=f"ack-{a['id']}"):
+            api.acknowledge_alert(a["id"])
+            st.rerun()
+
+    st.subheader("History")
+    done = api.get_alerts(acknowledged=True)
+    if done:
+        df = pd.json_normalize(done)[
+            ["id", "sent_at", "alert_type", "acknowledged_at",
+             "event.device.location", "event.confidence"]].rename(
+            columns={"event.device.location": "location",
+                     "event.confidence": "confidence"})
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.caption("No acknowledged alerts yet.")
 
 # ---------------- Devices ----------------
 elif page == "Devices":
