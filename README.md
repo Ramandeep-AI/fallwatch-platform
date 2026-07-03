@@ -58,6 +58,20 @@ cd dashboard && streamlit run app.py
 Dashboard: http://localhost:8501 — Overview metrics, filterable event
 explorer, daily/hourly analytics charts, and device health.
 
+## Screenshots
+
+**Dashboard overview** — headline metrics and live event feed:
+
+![Dashboard overview](docs/screenshots/dashboard-overview.png)
+
+**Analytics** — daily trend, hour-of-day pattern, adjustable time range:
+
+![Analytics](docs/screenshots/dashboard-analytics.png)
+
+**Auto-generated API documentation** (OpenAPI/Swagger):
+
+![API documentation](docs/screenshots/api-docs.png)
+
 ## Tests
 
 ```bash
