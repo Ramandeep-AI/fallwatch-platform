@@ -1,14 +1,17 @@
 """FallWatch REST API."""
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy import case, extract, func, select
 from sqlalchemy.orm import Session
 
-from . import models, schemas
+from . import models, notifications, schemas
 from .database import get_db
+
+ALERT_MIN_CONFIDENCE = float(os.environ.get("ALERT_MIN_CONFIDENCE", "0.7"))
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -35,7 +38,9 @@ def health():
 # ---------------- events ----------------
 @app.post("/api/v1/events", response_model=schemas.EventResponse,
           status_code=201, tags=["events"])
-def create_event(payload: schemas.EventCreate, db: Session = Depends(get_db)):
+def create_event(payload: schemas.EventCreate,
+                 background_tasks: BackgroundTasks,
+                 db: Session = Depends(get_db)):
     if db.get(models.Device, payload.device_id) is None:
         raise HTTPException(404, f"Device {payload.device_id} not found")
     if payload.person_id is not None and db.get(models.Person, payload.person_id) is None:
@@ -47,6 +52,19 @@ def create_event(payload: schemas.EventCreate, db: Session = Depends(get_db)):
     db.refresh(event)
     logger.info("event created: id=%s type=%s device=%s confidence=%.2f",
                 event.id, event.event_type, event.device_id, event.confidence)
+
+    if event.event_type == "fall" and event.confidence >= ALERT_MIN_CONFIDENCE:
+        for notifier in notifications.active_notifiers():
+            db.add(models.Alert(event_id=event.id, alert_type=notifier.name))
+        db.commit()
+        subject = f"Fall detected: {event.device.location}"
+        body = (f"Device '{event.device.name}' reported a fall at "
+                f"{event.timestamp:%Y-%m-%d %H:%M:%S %Z} "
+                f"(confidence {event.confidence:.2f})"
+                + (f" involving {event.person.name}." if event.person else "."))
+        # delivered after the response returns; the detection client never waits
+        background_tasks.add_task(notifications.dispatch, subject, body)
+
     return event
 
 
@@ -103,6 +121,34 @@ def delete_event(event_id: int, db: Session = Depends(get_db)):
          tags=["devices"])
 def list_devices(db: Session = Depends(get_db)):
     return db.scalars(select(models.Device).order_by(models.Device.id)).all()
+
+
+# ---------------- alerts ----------------
+@app.get("/api/v1/alerts", response_model=list[schemas.AlertResponse],
+         tags=["alerts"])
+def list_alerts(db: Session = Depends(get_db),
+                acknowledged: bool | None = None,
+                limit: int = Query(50, ge=1, le=500)):
+    query = select(models.Alert)
+    if acknowledged is True:
+        query = query.where(models.Alert.acknowledged_at.is_not(None))
+    elif acknowledged is False:
+        query = query.where(models.Alert.acknowledged_at.is_(None))
+    return db.scalars(
+        query.order_by(models.Alert.sent_at.desc()).limit(limit)).all()
+
+
+@app.post("/api/v1/alerts/{alert_id}/acknowledge",
+          response_model=schemas.AlertResponse, tags=["alerts"])
+def acknowledge_alert(alert_id: int, db: Session = Depends(get_db)):
+    alert = db.get(models.Alert, alert_id)
+    if alert is None:
+        raise HTTPException(404, f"Alert {alert_id} not found")
+    if alert.acknowledged_at is None:  # idempotent
+        alert.acknowledged_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(alert)
+    return alert
 
 
 # ---------------- statistics ----------------

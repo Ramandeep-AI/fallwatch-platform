@@ -56,3 +56,15 @@ class EventListResponse(BaseModel):
     limit: int
     offset: int
     items: list[EventResponse]
+
+
+# ---- alerts ----
+class AlertResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    event_id: int
+    alert_type: str
+    sent_at: datetime
+    acknowledged_at: datetime | None
+    event: EventResponse

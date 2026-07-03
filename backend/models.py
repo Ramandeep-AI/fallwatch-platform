@@ -51,7 +51,8 @@ class Event(Base):
 
     device: Mapped["Device"] = relationship(back_populates="events")
     person: Mapped["Person | None"] = relationship(back_populates="events")
-    alerts: Mapped[list["Alert"]] = relationship(back_populates="event")
+    alerts: Mapped[list["Alert"]] = relationship(back_populates="event",
+                                                 cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_events_timestamp", "timestamp"),
