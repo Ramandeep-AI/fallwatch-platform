@@ -1,9 +1,10 @@
 """FallWatch REST API."""
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Query
-from sqlalchemy import func, select
+from fastapi.responses import RedirectResponse
+from sqlalchemy import case, extract, func, select
 from sqlalchemy.orm import Session
 
 from . import models, schemas
@@ -19,6 +20,11 @@ app = FastAPI(
                 "fall-detection monitoring platform.",
     version="0.1.0",
 )
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/api/v1/health", tags=["system"])
@@ -97,3 +103,63 @@ def delete_event(event_id: int, db: Session = Depends(get_db)):
          tags=["devices"])
 def list_devices(db: Session = Depends(get_db)):
     return db.scalars(select(models.Device).order_by(models.Device.id)).all()
+
+
+# ---------------- statistics ----------------
+@app.get("/api/v1/stats/summary", tags=["statistics"])
+def stats_summary(db: Session = Depends(get_db)):
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    total = db.scalar(select(func.count(models.Event.id)))
+    today = db.scalar(select(func.count(models.Event.id))
+                      .where(models.Event.timestamp >= today_start))
+    falls_today = db.scalar(
+        select(func.count(models.Event.id))
+        .where(models.Event.timestamp >= today_start,
+               models.Event.event_type == "fall"))
+    avg_conf = db.scalar(select(func.avg(models.Event.confidence)))
+    active_devices = db.scalar(
+        select(func.count(func.distinct(models.Event.device_id)))
+        .where(models.Event.timestamp >= now - timedelta(hours=24)))
+
+    return {
+        "total_events": total,
+        "events_today": today,
+        "falls_today": falls_today,
+        "avg_confidence": round(avg_conf, 3) if avg_conf is not None else None,
+        "active_devices_24h": active_devices,
+    }
+
+
+@app.get("/api/v1/stats/daily", tags=["statistics"])
+def stats_daily(days: int = Query(30, ge=1, le=365),
+                db: Session = Depends(get_db)):
+    """Event counts per calendar day for the last `days` days."""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    day = func.date(models.Event.timestamp)
+    falls = func.sum(case((models.Event.event_type == "fall", 1), else_=0))
+    rows = db.execute(
+        select(day.label("date"),
+               func.count(models.Event.id).label("count"),
+               falls.label("falls"))
+        .where(models.Event.timestamp >= since)
+        .group_by(day).order_by(day)
+    ).all()
+    return [{"date": str(r.date), "count": r.count, "falls": int(r.falls or 0)}
+            for r in rows]
+
+
+@app.get("/api/v1/stats/hourly", tags=["statistics"])
+def stats_hourly(days: int = Query(30, ge=1, le=365),
+                 db: Session = Depends(get_db)):
+    """Event counts by hour of day over the last `days` days."""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    hour = extract("hour", models.Event.timestamp)
+    rows = db.execute(
+        select(hour.label("hour"), func.count(models.Event.id).label("count"))
+        .where(models.Event.timestamp >= since)
+        .group_by(hour).order_by(hour)
+    ).all()
+    counts = {int(r.hour): r.count for r in rows}
+    return [{"hour": h, "count": counts.get(h, 0)} for h in range(24)]

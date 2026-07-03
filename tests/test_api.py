@@ -99,3 +99,30 @@ def test_list_devices(client):
     body = client.get("/api/v1/devices").json()
     assert len(body) == 1
     assert body[0]["name"] == "cam-1"
+
+
+def test_stats_summary(client):
+    make_event(client, event_type="fall", confidence=0.9)
+    make_event(client, event_type="activity", confidence=0.7)
+    body = client.get("/api/v1/stats/summary").json()
+    assert body["total_events"] == 2
+    assert body["events_today"] == 2
+    assert body["falls_today"] == 1
+    assert body["avg_confidence"] == 0.8
+    assert body["active_devices_24h"] == 1
+
+
+def test_stats_daily(client):
+    make_event(client, event_type="fall")
+    make_event(client, event_type="activity")
+    body = client.get("/api/v1/stats/daily").json()
+    assert len(body) == 1  # all events created today
+    assert body[0]["count"] == 2
+    assert body[0]["falls"] == 1
+
+
+def test_stats_hourly_covers_all_24_hours(client):
+    make_event(client)
+    body = client.get("/api/v1/stats/hourly").json()
+    assert len(body) == 24
+    assert sum(row["count"] for row in body) == 1
