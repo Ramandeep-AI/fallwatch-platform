@@ -51,7 +51,7 @@ h3, h4 {{ margin-top: 1.5rem !important; }}
     text-transform: uppercase; color: {ACCENT}; margin-bottom: 2px;
 }}
 .fw-title {{ font-size: 2.1rem; font-weight: 700; color: #f0f6f4;
-             line-height: 1.15; margin-bottom: 2px; }}
+             line-height: 1.15; margin-bottom: 18px; }}
 .fw-sub {{ color: #5c6f6b; font-size: 0.95rem; margin-bottom: 10px; }}
 
 .fw-live {{
