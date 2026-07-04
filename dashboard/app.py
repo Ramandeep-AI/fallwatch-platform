@@ -90,7 +90,7 @@ h3, h4 {{ margin-top: 1.5rem !important; }}
     display: flex; align-items: center; gap: 14px;
     background: linear-gradient(165deg, #0f1a1a 0%, #0b1213 100%);
     border: 1px solid #17282a; border-radius: 14px;
-    padding: 14px 16px; margin-bottom: 10px;
+    padding: 16px; margin-bottom: 12px;
 }}
 .fw-stat .ico {{
     width: 42px; height: 42px; border-radius: 11px; flex: none;
@@ -315,7 +315,7 @@ def monitor_panel(alarm: bool):
           <line x1="0" y1="14" x2="-15" y2="42"/><line x1="0" y1="14" x2="15" y2="42"/>
           </g>"""
     return f"""<div class="fw-panel" style="border-color:{'#4c2430' if alarm else '#17282a'}">
-<svg viewBox="0 0 430 160" width="100%" height="222" preserveAspectRatio="xMidYMid meet">
+<svg viewBox="0 0 430 160" width="100%" height="240" preserveAspectRatio="xMidYMid meet">
   <polyline points="0,16 60,16 74,4 86,28 98,16 150,16 330,16 344,6 356,22 368,16 430,16"
     stroke="{color}" stroke-width="1.6" fill="none" opacity="0.85"/>
   <rect x="176" y="42" width="78" height="106" rx="10"
@@ -368,8 +368,8 @@ if page == "Overview":
         with k1:
             header("LIVE · REFRESHES EVERY 5S", "Overview")
         with k2:
-            st.markdown(f'<div style="text-align:right"><span class="fw-live">'
-                        f'● LIVE <span class="clock">'
+            st.markdown(f'<div style="text-align:right; margin:2px 0 16px 0">'
+                        f'<span class="fw-live">● LIVE <span class="clock">'
                         f'{datetime.now(timezone.utc):%H:%M:%S} UTC</span>'
                         f'</span></div>', unsafe_allow_html=True)
 
@@ -485,6 +485,7 @@ elif page == "Analytics":
 # ---------------- Devices ----------------
 elif page == "Devices":
     header("CAMERA FLEET HEALTH", "Devices")
+    st.markdown('<div style="height:16px"></div>', unsafe_allow_html=True)
     events = api.get_events(limit=500)["items"]
     last_seen = {}
     per_device_daily = {}
