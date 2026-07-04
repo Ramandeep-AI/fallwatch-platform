@@ -32,6 +32,19 @@ st.markdown(f"""
     color: #9fb8b2; font-family: {MONO}; font-size: 0.8rem;
 }}
 .stButton > button:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
+div.stButton {{ margin-top: 10px; }}
+
+/* breathing room between sections */
+h3, h4 {{ margin-top: 1.5rem !important; }}
+
+/* tables scroll inside their own container, never the page */
+.fw-tablewrap {{ overflow-x: auto; }}
+.fw-tablewrap table.fw-table {{ min-width: 660px; }}
+
+.fw-foot {{ display: flex; flex-wrap: wrap; gap: 10px; row-gap: 8px;
+            align-items: center; justify-content: space-between;
+            margin-top: 10px; }}
+.fw-foot .note {{ font-family: {MONO}; font-size: 0.75rem; color: #5c6f6b; }}
 
 .fw-kicker {{
     font-family: {MONO}; font-size: 0.72rem; letter-spacing: 0.22em;
@@ -267,10 +280,10 @@ def events_table_html(items):
             f'{e["confidence"]:.2f}</span></td>'
             f'<td class="mono">{e["device"]["name"]}</td>'
             f'<td>{e["device"]["location"]}</td><td>{person}</td></tr>')
-    return ('<table class="fw-table"><thead><tr>'
+    return ('<div class="fw-tablewrap"><table class="fw-table"><thead><tr>'
             '<th>Time</th><th>Type</th><th>Confidence</th><th>Camera</th>'
             '<th>Location</th><th>Resident</th></tr></thead><tbody>'
-            + "".join(rows) + "</tbody></table>")
+            + "".join(rows) + "</tbody></table></div>")
 
 
 def stat_card(icon, label, value, chip, red=False):
@@ -302,7 +315,7 @@ def monitor_panel(alarm: bool):
           <line x1="0" y1="14" x2="-15" y2="42"/><line x1="0" y1="14" x2="15" y2="42"/>
           </g>"""
     return f"""<div class="fw-panel" style="border-color:{'#4c2430' if alarm else '#17282a'}">
-<svg viewBox="0 0 430 160" width="100%" height="190">
+<svg viewBox="0 0 430 160" width="100%" height="222" preserveAspectRatio="xMidYMid meet">
   <polyline points="0,16 60,16 74,4 86,28 98,16 150,16 330,16 344,6 356,22 368,16 430,16"
     stroke="{color}" stroke-width="1.6" fill="none" opacity="0.85"/>
   <rect x="176" y="42" width="78" height="106" rx="10"
@@ -313,10 +326,9 @@ def monitor_panel(alarm: bool):
     font-size="10" fill="{color}">resident status</text>
   {person}
 </svg>
-<div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px">
+<div class="fw-foot">
   <span class="fw-pill {'bad' if alarm else 'ok'}">● {label}</span>
-  <span style="font-family:{MONO}; font-size:0.75rem; color:#5c6f6b">
-    edge inference · no video leaves the device</span>
+  <span class="note">edge inference · no video leaves the device</span>
 </div></div>"""
 
 
@@ -365,11 +377,10 @@ if page == "Overview":
         with hero:
             st.markdown(monitor_panel(alarm=len(open_alerts) > 0),
                         unsafe_allow_html=True)
-            _, btn = st.columns([2.9, 1.1])
-            if btn.button("▶ demo fall", use_container_width=True,
-                          help="Posts a demonstration fall event through the "
-                          "real ingestion pipeline — watch the monitor react, "
-                          "then acknowledge it on the Alerts page"):
+            if st.button("▶ Trigger demo fall", use_container_width=True,
+                         help="Posts a demonstration fall event through the "
+                         "real ingestion pipeline — watch the monitor react, "
+                         "then acknowledge it on the Alerts page"):
                 api.create_demo_event()
         with rail:
             d_falls = summary["falls_today"] - yest.get("falls", 0)
@@ -438,7 +449,7 @@ elif page == "Analytics":
     if daily.empty:
         st.info("No events in the selected range.")
     else:
-        left, right = st.columns(2)
+        left, right = st.columns(2, gap="large")
         with left:
             fig = go.Figure()
             fig.add_scatter(x=daily["date"], y=daily["count"], name="events",
@@ -456,8 +467,9 @@ elif page == "Analytics":
                                                 "when incidents cluster"))
             st.plotly_chart(style_fig(fig), use_container_width=True)
 
+        st.markdown('<div style="height:26px"></div>', unsafe_allow_html=True)
         df = pd.json_normalize(api.get_events(limit=500)["items"])
-        left2, right2 = st.columns(2)
+        left2, right2 = st.columns(2, gap="large")
         with left2:
             fig = px.histogram(df, x="confidence", nbins=20,
                                color_discrete_sequence=[INDIGO])
@@ -560,10 +572,11 @@ confidence {ev["confidence"]:.2f} · via {a["alert_type"]}{who}</div>""",
                 f'<td>{a["event"]["device"]["location"]}</td>'
                 f'<td><span class="fw-bar"><i style="width:{conf*100:.0f}%"></i>'
                 f'</span><span class="mono">{conf:.2f}</span></td></tr>')
-        st.markdown('<table class="fw-table"><thead><tr><th>Sent</th>'
+        st.markdown('<div class="fw-tablewrap"><table class="fw-table">'
+                    '<thead><tr><th>Sent</th>'
                     '<th>Channel</th><th>Acknowledged</th><th>Response</th>'
                     '<th>Location</th><th>Confidence</th></tr></thead><tbody>'
-                    + "".join(rows) + "</tbody></table>",
+                    + "".join(rows) + "</tbody></table></div>",
                     unsafe_allow_html=True)
         st.markdown('<div class="fw-sidecaption">times shown in UTC</div>',
                     unsafe_allow_html=True)
