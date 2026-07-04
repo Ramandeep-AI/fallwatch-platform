@@ -53,3 +53,13 @@ def acknowledge_alert(alert_id: int):
                          timeout=TIMEOUT)
     resp.raise_for_status()
     return resp.json()
+
+
+def create_demo_event():
+    """Post a demonstration fall event through the real ingestion pipeline."""
+    resp = requests.post(f"{API_URL}/api/v1/events", timeout=TIMEOUT,
+                         json={"device_id": 1, "person_id": 1,
+                               "event_type": "fall", "confidence": 0.9,
+                               "notes": "demo alert"})
+    resp.raise_for_status()
+    return resp.json()

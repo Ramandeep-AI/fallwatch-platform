@@ -1,0 +1,13 @@
+[theme]
+base = "dark"
+primaryColor = "#36d7b7"
+backgroundColor = "#0a0f10"
+secondaryBackgroundColor = "#0f1719"
+textColor = "#dbe7e4"
+
+[server]
+headless = true
+
+[client]
+# hide the Streamlit deploy button and dev menu from visitors
+toolbarMode = "minimal"
