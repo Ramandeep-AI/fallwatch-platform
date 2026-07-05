@@ -535,51 +535,55 @@ elif page == "Devices":
 
 # ---------------- Alerts ----------------
 elif page == "Alerts":
-    header("CAREGIVER ACKNOWLEDGEMENT", "Alerts")
+    header("CAREGIVER ACKNOWLEDGEMENT · LIVE", "Alerts")
 
-    open_alerts = api.get_alerts(acknowledged=False)
-    st.markdown(f"#### Open · {len(open_alerts)}")
-    if not open_alerts:
-        st.markdown("""<div class="fw-allclear"><div class="tick">✓</div><div>
+    @st.fragment(run_every="5s")
+    def live_alerts():
+        open_alerts = api.get_alerts(acknowledged=False)
+        st.markdown(f"#### Open · {len(open_alerts)}")
+        if not open_alerts:
+            st.markdown("""<div class="fw-allclear"><div class="tick">✓</div><div>
 <div class="t1">All clear</div>
 <div class="t2">No unacknowledged alerts. Every resident is accounted for.</div>
 </div></div>""", unsafe_allow_html=True)
-    for a in open_alerts:
-        ev = a["event"]
-        who = f" · {ev['person']['name']}" if ev.get("person") else ""
-        c1, c2 = st.columns([5, 1], vertical_alignment="center")
-        c1.markdown(f"""
+        for a in open_alerts:
+            ev = a["event"]
+            who = f" · {ev['person']['name']}" if ev.get("person") else ""
+            c1, c2 = st.columns([5, 1], vertical_alignment="center")
+            c1.markdown(f"""
 <div class="fw-alert">🚨 <b>Fall — {ev["device"]["location"]}</b><br>
 {time_ago(a["sent_at"])} · device {ev["device"]["name"]} ·
 confidence {ev["confidence"]:.2f} · via {a["alert_type"]}{who}</div>""",
-                    unsafe_allow_html=True)
-        if c2.button("Acknowledge", key=f"ack-{a['id']}", type="primary"):
-            api.acknowledge_alert(a["id"])
-            st.rerun()
+                        unsafe_allow_html=True)
+            if c2.button("Acknowledge", key=f"ack-{a['id']}", type="primary"):
+                api.acknowledge_alert(a["id"])
+                st.rerun()
 
-    st.markdown("#### History")
-    done = api.get_alerts(acknowledged=True)
-    if done:
-        rows = []
-        for a in done:
-            response = (parse_ts(a["acknowledged_at"])
-                        - parse_ts(a["sent_at"])).total_seconds()
-            conf = a["event"]["confidence"]
-            rows.append(
-                f'<tr><td class="mono">{parse_ts(a["sent_at"]):%d %b · %H:%M:%S}</td>'
-                f'<td class="mono">{a["alert_type"]}</td>'
-                f'<td class="mono">{parse_ts(a["acknowledged_at"]):%d %b · %H:%M:%S}</td>'
-                f'<td class="mono" style="color:{ACCENT}">✓ {duration(response)}</td>'
-                f'<td>{a["event"]["device"]["location"]}</td>'
-                f'<td><span class="fw-bar"><i style="width:{conf*100:.0f}%"></i>'
-                f'</span><span class="mono">{conf:.2f}</span></td></tr>')
-        st.markdown('<div class="fw-tablewrap"><table class="fw-table">'
-                    '<thead><tr><th>Sent</th>'
-                    '<th>Channel</th><th>Acknowledged</th><th>Response</th>'
-                    '<th>Location</th><th>Confidence</th></tr></thead><tbody>'
-                    + "".join(rows) + "</tbody></table></div>",
-                    unsafe_allow_html=True)
-        st.markdown('<div class="fw-sidecaption">times shown in UTC</div>',
-                    unsafe_allow_html=True)
-    else:
-        st.caption("No acknowledged alerts yet.")
+        st.markdown("#### History")
+        done = api.get_alerts(acknowledged=True)
+        if done:
+            rows = []
+            for a in done:
+                response = (parse_ts(a["acknowledged_at"])
+                            - parse_ts(a["sent_at"])).total_seconds()
+                conf = a["event"]["confidence"]
+                rows.append(
+                    f'<tr><td class="mono">{parse_ts(a["sent_at"]):%d %b · %H:%M:%S}</td>'
+                    f'<td class="mono">{a["alert_type"]}</td>'
+                    f'<td class="mono">{parse_ts(a["acknowledged_at"]):%d %b · %H:%M:%S}</td>'
+                    f'<td class="mono" style="color:{ACCENT}">✓ {duration(response)}</td>'
+                    f'<td>{a["event"]["device"]["location"]}</td>'
+                    f'<td><span class="fw-bar"><i style="width:{conf*100:.0f}%"></i>'
+                    f'</span><span class="mono">{conf:.2f}</span></td></tr>')
+            st.markdown('<div class="fw-tablewrap"><table class="fw-table">'
+                        '<thead><tr><th>Sent</th>'
+                        '<th>Channel</th><th>Acknowledged</th><th>Response</th>'
+                        '<th>Location</th><th>Confidence</th></tr></thead><tbody>'
+                        + "".join(rows) + "</tbody></table></div>",
+                        unsafe_allow_html=True)
+            st.markdown('<div class="fw-sidecaption">times shown in UTC</div>',
+                        unsafe_allow_html=True)
+        else:
+            st.caption("No acknowledged alerts yet.")
+
+    live_alerts()
