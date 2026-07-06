@@ -52,7 +52,7 @@ Interactive API docs: http://localhost:8000/docs
 
 ```bash
 # 6. Run the dashboard (in a second terminal, with the API running)
-cd dashboard && streamlit run app.py
+streamlit run dashboard/app.py
 ```
 
 Dashboard: http://localhost:8501 — Overview metrics, filterable event
@@ -96,6 +96,16 @@ run in CI on every push.
 | GET | `/api/v1/stats/hourly` | event counts by hour of day |
 | GET | `/api/v1/alerts` | list alerts (filter by acknowledged state) |
 | POST | `/api/v1/alerts/{id}/acknowledge` | mark an alert as handled |
+
+## Security
+
+Write endpoints (`POST /events`, `POST /alerts/{id}/acknowledge`,
+`DELETE /events/{id}`) require an `X-API-Key` header when
+`FALLWATCH_API_KEY` is configured; read endpoints stay public so the demo
+dashboard and API docs remain browsable (all data shown is synthetic). The
+database accepts connections only from the application server's security
+group, secrets live in an uncommitted `.env`, all values rendered by the
+dashboard are HTML-escaped, and the containers run as a non-root user.
 
 ## Alerts
 
