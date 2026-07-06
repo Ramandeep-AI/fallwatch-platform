@@ -10,6 +10,15 @@ caregiver alerts.
 Companion project: [ai-fall-detection-prototype](https://github.com/Ramandeep-AI/ai-fall-detection-prototype)
 (the computer-vision model that produces the events).
 
+## Live demo
+
+[![55-second live demo: a real fall detected on-device and alerted through AWS](docs/screenshots/system-in-action.png)](https://youtu.be/b-rTquYopj0)
+
+**[▶ Watch the 55-second unedited demo](https://youtu.be/b-rTquYopj0)** — a real
+(controlled, onto a mattress) fall is detected by the edge model, reported over
+the internet to this platform on AWS, raises an alert on the live dashboard
+within seconds, and is acknowledged by the caregiver workflow.
+
 ## Architecture
 
 ```
@@ -60,13 +69,15 @@ explorer, daily/hourly analytics charts, and device health.
 
 ## Screenshots
 
-**Dashboard overview** — headline metrics and live event feed:
+**Dashboard overview** — live monitor panel, headline metrics, event feed
+(auto-refreshes every 5 s; the panel turns red and the figure falls over
+while an alert is open):
 
 ![Dashboard overview](docs/screenshots/dashboard-overview.png)
 
-**Analytics** — daily trend, hour-of-day pattern, adjustable time range:
+**Alerts** — caregiver acknowledgement workflow with response times:
 
-![Analytics](docs/screenshots/dashboard-analytics.png)
+![Alerts](docs/screenshots/dashboard-alerts.png)
 
 **Auto-generated API documentation** (OpenAPI/Swagger):
 
