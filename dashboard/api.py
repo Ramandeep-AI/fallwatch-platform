@@ -6,6 +6,11 @@ import requests
 API_URL = os.environ.get("FALLWATCH_API_URL", "http://localhost:8000")
 TIMEOUT = 5
 
+# write endpoints require this header when the API has FALLWATCH_API_KEY set;
+# the dashboard holds the key server-side, so browser visitors never see it
+WRITE_HEADERS = ({"X-API-Key": os.environ["FALLWATCH_API_KEY"]}
+                 if os.environ.get("FALLWATCH_API_KEY") else {})
+
 
 def _get(path: str, **params):
     resp = requests.get(f"{API_URL}{path}", params=params or None,
@@ -50,7 +55,7 @@ def get_alerts(acknowledged: bool | None = None):
 
 def acknowledge_alert(alert_id: int):
     resp = requests.post(f"{API_URL}/api/v1/alerts/{alert_id}/acknowledge",
-                         timeout=TIMEOUT)
+                         headers=WRITE_HEADERS, timeout=TIMEOUT)
     resp.raise_for_status()
     return resp.json()
 
@@ -58,6 +63,7 @@ def acknowledge_alert(alert_id: int):
 def create_demo_event():
     """Post a demonstration fall event through the real ingestion pipeline."""
     resp = requests.post(f"{API_URL}/api/v1/events", timeout=TIMEOUT,
+                         headers=WRITE_HEADERS,
                          json={"device_id": 1, "person_id": 1,
                                "event_type": "fall", "confidence": 0.9,
                                "notes": "demo alert"})

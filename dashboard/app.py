@@ -4,6 +4,7 @@ Run from the repository root: streamlit run dashboard/app.py
 Requires the API (uvicorn backend.main:app) and database to be running.
 """
 from datetime import datetime, timezone
+from html import escape
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -266,20 +267,22 @@ def duration(seconds: float) -> str:
 
 
 def events_table_html(items):
+    # every database-sourced value is escaped before being rendered with
+    # unsafe_allow_html (stored-XSS guard)
     rows = []
     for e in items:
         color = DANGER if e["event_type"] == "fall" else ACCENT
-        person = e["person"]["name"] if e.get("person") else "—"
+        person = escape(e["person"]["name"]) if e.get("person") else "—"
         ts = parse_ts(e["timestamp"]).strftime("%d %b · %H:%M:%S")
         rows.append(
             f'<tr><td class="mono">{ts}</td>'
             f'<td><span class="fw-dot" style="background:{color}"></span>'
-            f'<span style="color:{color}">{e["event_type"]}</span></td>'
+            f'<span style="color:{color}">{escape(e["event_type"])}</span></td>'
             f'<td><span class="fw-bar"><i style="width:{e["confidence"]*100:.0f}%">'
             f'</i></span><span class="mono" style="font-family:monospace">'
             f'{e["confidence"]:.2f}</span></td>'
-            f'<td class="mono">{e["device"]["name"]}</td>'
-            f'<td>{e["device"]["location"]}</td><td>{person}</td></tr>')
+            f'<td class="mono">{escape(e["device"]["name"])}</td>'
+            f'<td>{escape(e["device"]["location"])}</td><td>{person}</td></tr>')
     return ('<div class="fw-tablewrap"><table class="fw-table"><thead><tr>'
             '<th>Time</th><th>Type</th><th>Confidence</th><th>Camera</th>'
             '<th>Location</th><th>Resident</th></tr></thead><tbody>'
@@ -394,7 +397,7 @@ if page == "Overview":
                           falls_chip, red=True)
                 + stat_card("〰️", "EVENTS TODAY", summary["events_today"],
                             events_chip)
-                + stat_card("✅", "AVG CONFIDENCE",
+                + stat_card("✅", "AVG FALL CONFIDENCE",
                             summary["avg_confidence"] or "—", "all time")
                 + stat_card("🗂", "TOTAL EVENTS", summary["total_events"],
                             "all time"),
@@ -526,8 +529,8 @@ elif page == "Devices":
 <div class="fw-cam">
   <div class="view"><span class="rec">{strip}</span></div>
   <div class="body">
-    <div class="name">{d["name"]}</div>
-    <div class="loc">{d["location"]}</div>
+    <div class="name">{escape(d["name"])}</div>
+    <div class="loc">{escape(d["location"])}</div>
     {sparkline(per_device_daily.get(d["id"], {}))}
     <div class="foot">{pill}<span class="ago">{ago}</span></div>
   </div>
@@ -548,12 +551,12 @@ elif page == "Alerts":
 </div></div>""", unsafe_allow_html=True)
         for a in open_alerts:
             ev = a["event"]
-            who = f" · {ev['person']['name']}" if ev.get("person") else ""
+            who = f" · {escape(ev['person']['name'])}" if ev.get("person") else ""
             c1, c2 = st.columns([5, 1], vertical_alignment="center")
             c1.markdown(f"""
-<div class="fw-alert">🚨 <b>Fall — {ev["device"]["location"]}</b><br>
-{time_ago(a["sent_at"])} · device {ev["device"]["name"]} ·
-confidence {ev["confidence"]:.2f} · via {a["alert_type"]}{who}</div>""",
+<div class="fw-alert">🚨 <b>Fall — {escape(ev["device"]["location"])}</b><br>
+{time_ago(a["sent_at"])} · device {escape(ev["device"]["name"])} ·
+confidence {ev["confidence"]:.2f} · via {escape(a["alert_type"])}{who}</div>""",
                         unsafe_allow_html=True)
             if c2.button("Acknowledge", key=f"ack-{a['id']}", type="primary"):
                 api.acknowledge_alert(a["id"])
@@ -569,10 +572,10 @@ confidence {ev["confidence"]:.2f} · via {a["alert_type"]}{who}</div>""",
                 conf = a["event"]["confidence"]
                 rows.append(
                     f'<tr><td class="mono">{parse_ts(a["sent_at"]):%d %b · %H:%M:%S}</td>'
-                    f'<td class="mono">{a["alert_type"]}</td>'
+                    f'<td class="mono">{escape(a["alert_type"])}</td>'
                     f'<td class="mono">{parse_ts(a["acknowledged_at"]):%d %b · %H:%M:%S}</td>'
                     f'<td class="mono" style="color:{ACCENT}">✓ {duration(response)}</td>'
-                    f'<td>{a["event"]["device"]["location"]}</td>'
+                    f'<td>{escape(a["event"]["device"]["location"])}</td>'
                     f'<td><span class="fw-bar"><i style="width:{conf*100:.0f}%"></i>'
                     f'</span><span class="mono">{conf:.2f}</span></td></tr>')
             st.markdown('<div class="fw-tablewrap"><table class="fw-table">'
