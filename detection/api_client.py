@@ -3,6 +3,9 @@
 Integration point in the detection project (fall-detection-prototype,
 src/run_realtime.py): call report_fall() at the moment the alarm latches,
 i.e. where `alarm_until` is set.
+
+NOTE: a copy of this client lives in the detection repo as src/cloud.py -
+keep the two in sync when changing the payload or authentication.
 """
 import logging
 import os
@@ -11,6 +14,7 @@ import time
 import requests
 
 API_URL = os.environ.get("FALLWATCH_API_URL", "http://localhost:8000")
+API_KEY = os.environ.get("FALLWATCH_API_KEY")
 DEVICE_ID = int(os.environ.get("FALLWATCH_DEVICE_ID", "1"))
 
 MAX_RETRIES = 3
@@ -30,10 +34,11 @@ def report_fall(confidence: float, person_id: int | None = None,
     if notes:
         payload["notes"] = notes
 
+    headers = {"X-API-Key": API_KEY} if API_KEY else {}
     for attempt in range(MAX_RETRIES):
         try:
             resp = requests.post(f"{API_URL}/api/v1/events", json=payload,
-                                 timeout=5)
+                                 headers=headers, timeout=5)
             resp.raise_for_status()
             logger.info("fall event reported: id=%s", resp.json()["id"])
             return True

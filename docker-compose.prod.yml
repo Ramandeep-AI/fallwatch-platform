@@ -15,6 +15,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.dashboard
+    env_file: .env  # FALLWATCH_API_KEY for authenticated write calls
     environment:
       - FALLWATCH_API_URL=http://backend:8000
     ports:
