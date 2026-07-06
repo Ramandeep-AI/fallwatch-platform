@@ -5,6 +5,8 @@ Usage: python -m backend.seed
 import random
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import func, select
+
 from .database import SessionLocal
 from .models import Device, Event, Person
 
@@ -20,7 +22,7 @@ def main():
     random.seed(42)
     db = SessionLocal()
     try:
-        if db.query(Device).count() > 0:
+        if db.scalar(select(func.count(Device.id))) > 0:
             print("[INFO] Database already seeded, nothing to do.")
             return
 

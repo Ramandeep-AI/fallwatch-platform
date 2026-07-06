@@ -1,7 +1,7 @@
 """Pydantic request/response schemas."""
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ---- devices ----
@@ -34,6 +34,12 @@ class EventCreate(BaseModel):
     timestamp: datetime | None = None  # server time used when omitted
     video_frame_path: str | None = None
     notes: str | None = None
+
+    @field_validator("event_type")
+    @classmethod
+    def normalize_event_type(cls, v: str) -> str:
+        # "Fall" and "fall" must alert identically
+        return v.strip().lower()
 
 
 class EventResponse(BaseModel):

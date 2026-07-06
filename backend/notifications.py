@@ -23,9 +23,14 @@ class ConsoleNotifier:
 
 
 class EmailNotifier:
-    """Sends alerts over SMTP. Active when SMTP_HOST is configured."""
+    """Sends alerts over SMTP. Active when fully configured."""
 
     name = "email"
+
+    @staticmethod
+    def is_configured() -> bool:
+        return bool(os.environ.get("SMTP_HOST")
+                    and os.environ.get("ALERT_EMAIL_TO"))
 
     def __init__(self):
         self.host = os.environ["SMTP_HOST"]
@@ -48,9 +53,22 @@ class EmailNotifier:
         logger.info("alert email sent to %s", self.to_addr)
 
 
+def configured_channels() -> list[str]:
+    """Channel names only - safe to call from the request path, cannot fail
+    on partial configuration (a half-configured channel is skipped and
+    logged rather than turning ingestion into a 500)."""
+    channels = [ConsoleNotifier.name]
+    if EmailNotifier.is_configured():
+        channels.append(EmailNotifier.name)
+    elif os.environ.get("SMTP_HOST"):
+        logger.warning("SMTP_HOST set but ALERT_EMAIL_TO missing - "
+                       "email channel disabled")
+    return channels
+
+
 def active_notifiers():
     notifiers = [ConsoleNotifier()]
-    if os.environ.get("SMTP_HOST"):
+    if EmailNotifier.is_configured():
         notifiers.append(EmailNotifier())
     return notifiers
 

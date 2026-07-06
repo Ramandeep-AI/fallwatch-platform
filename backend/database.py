@@ -12,7 +12,12 @@ DATABASE_URL = os.environ.get(
     "postgresql+psycopg2://fallwatch:fallwatch_dev_password@localhost:5432/fallwatch",
 )
 
-engine = create_engine(DATABASE_URL)
+# Force the PostgreSQL session into UTC so date()/extract() bucketing in the
+# statistics endpoints matches the UTC cutoffs computed in Python, regardless
+# of server or client locale.
+_connect_args = ({"options": "-c timezone=utc"}
+                 if DATABASE_URL.startswith("postgresql") else {})
+engine = create_engine(DATABASE_URL, connect_args=_connect_args)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 

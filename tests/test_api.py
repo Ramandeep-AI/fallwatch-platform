@@ -108,7 +108,7 @@ def test_stats_summary(client):
     assert body["total_events"] == 2
     assert body["events_today"] == 2
     assert body["falls_today"] == 1
-    assert body["avg_confidence"] == 0.8
+    assert body["avg_confidence"] == 0.9  # falls only
     assert body["active_devices_24h"] == 1
 
 
@@ -163,3 +163,26 @@ def test_acknowledge_alert_is_idempotent(client):
 
 def test_acknowledge_unknown_alert_returns_404(client):
     assert client.post("/api/v1/alerts/999/acknowledge").status_code == 404
+
+
+def test_event_type_is_normalized_on_ingest(client):
+    make_event(client, event_type="  Fall ")
+    body = client.get("/api/v1/events").json()
+    assert body["items"][0]["event_type"] == "fall"
+    # normalization means the alert pipeline fires despite the odd casing
+    assert len(client.get("/api/v1/alerts").json()) == 1
+
+
+def test_write_endpoints_require_api_key_when_configured(client, monkeypatch):
+    monkeypatch.setenv("FALLWATCH_API_KEY", "test-secret")
+
+    assert make_event(client).status_code == 401
+    assert client.post("/api/v1/alerts/1/acknowledge").status_code == 401
+    assert client.delete("/api/v1/events/1").status_code == 401
+
+    ok = client.post("/api/v1/events", headers={"X-API-Key": "test-secret"},
+                     json={"device_id": 1, "person_id": 1,
+                           "event_type": "fall", "confidence": 0.9})
+    assert ok.status_code == 201
+    # reads stay public
+    assert client.get("/api/v1/events").status_code == 200

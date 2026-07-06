@@ -3,15 +3,25 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
+from fastapi import (BackgroundTasks, Depends, FastAPI, Header, HTTPException,
+                     Query)
 from fastapi.responses import RedirectResponse
 from sqlalchemy import case, extract, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from . import models, notifications, schemas
 from .database import get_db
 
 ALERT_MIN_CONFIDENCE = float(os.environ.get("ALERT_MIN_CONFIDENCE", "0.7"))
+
+
+def require_api_key(x_api_key: str | None = Header(None)):
+    """Write-endpoint guard. When FALLWATCH_API_KEY is set, mutating requests
+    must present it in the X-API-Key header; read endpoints stay public so
+    the demo dashboard and API docs remain browsable."""
+    expected = os.environ.get("FALLWATCH_API_KEY")
+    if expected and x_api_key != expected:
+        raise HTTPException(401, "Missing or invalid API key")
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -37,7 +47,8 @@ def health():
 
 # ---------------- events ----------------
 @app.post("/api/v1/events", response_model=schemas.EventResponse,
-          status_code=201, tags=["events"])
+          status_code=201, tags=["events"],
+          dependencies=[Depends(require_api_key)])
 def create_event(payload: schemas.EventCreate,
                  background_tasks: BackgroundTasks,
                  db: Session = Depends(get_db)):
@@ -54,8 +65,8 @@ def create_event(payload: schemas.EventCreate,
                 event.id, event.event_type, event.device_id, event.confidence)
 
     if event.event_type == "fall" and event.confidence >= ALERT_MIN_CONFIDENCE:
-        for notifier in notifications.active_notifiers():
-            db.add(models.Alert(event_id=event.id, alert_type=notifier.name))
+        for channel in notifications.configured_channels():
+            db.add(models.Alert(event_id=event.id, alert_type=channel))
         db.commit()
         subject = f"Fall detected: {event.device.location}"
         body = (f"Device '{event.device.name}' reported a fall at "
@@ -79,7 +90,9 @@ def list_events(
     start: datetime | None = None,
     end: datetime | None = None,
 ):
-    query = select(models.Event)
+    # selectinload avoids one lazy device/person query per returned row
+    query = select(models.Event).options(
+        selectinload(models.Event.device), selectinload(models.Event.person))
     if device_id is not None:
         query = query.where(models.Event.device_id == device_id)
     if person_id is not None:
@@ -107,7 +120,8 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
     return event
 
 
-@app.delete("/api/v1/events/{event_id}", status_code=204, tags=["events"])
+@app.delete("/api/v1/events/{event_id}", status_code=204, tags=["events"],
+            dependencies=[Depends(require_api_key)])
 def delete_event(event_id: int, db: Session = Depends(get_db)):
     event = db.get(models.Event, event_id)
     if event is None:
@@ -129,7 +143,9 @@ def list_devices(db: Session = Depends(get_db)):
 def list_alerts(db: Session = Depends(get_db),
                 acknowledged: bool | None = None,
                 limit: int = Query(50, ge=1, le=500)):
-    query = select(models.Alert)
+    query = select(models.Alert).options(
+        selectinload(models.Alert.event).selectinload(models.Event.device),
+        selectinload(models.Alert.event).selectinload(models.Event.person))
     if acknowledged is True:
         query = query.where(models.Alert.acknowledged_at.is_not(None))
     elif acknowledged is False:
@@ -139,7 +155,8 @@ def list_alerts(db: Session = Depends(get_db),
 
 
 @app.post("/api/v1/alerts/{alert_id}/acknowledge",
-          response_model=schemas.AlertResponse, tags=["alerts"])
+          response_model=schemas.AlertResponse, tags=["alerts"],
+          dependencies=[Depends(require_api_key)])
 def acknowledge_alert(alert_id: int, db: Session = Depends(get_db)):
     alert = db.get(models.Alert, alert_id)
     if alert is None:
@@ -164,7 +181,8 @@ def stats_summary(db: Session = Depends(get_db)):
         select(func.count(models.Event.id))
         .where(models.Event.timestamp >= today_start,
                models.Event.event_type == "fall"))
-    avg_conf = db.scalar(select(func.avg(models.Event.confidence)))
+    avg_conf = db.scalar(select(func.avg(models.Event.confidence))
+                         .where(models.Event.event_type == "fall"))
     active_devices = db.scalar(
         select(func.count(func.distinct(models.Event.device_id)))
         .where(models.Event.timestamp >= now - timedelta(hours=24)))
