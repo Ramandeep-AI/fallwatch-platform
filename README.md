@@ -19,6 +19,12 @@ Companion project: [ai-fall-detection-prototype](https://github.com/Ramandeep-AI
 the internet to this platform on AWS, raises an alert on the live dashboard
 within seconds, and is acknowledged by the caregiver workflow.
 
+**Try it live:** [dashboard](http://13.135.223.53:8501) · [API docs](http://13.135.223.53:8000/docs).
+The demo is served over plain HTTP with synthetic, read-only data — browsers
+will flag it "Not Secure", which is expected for a public demo carrying no
+credentials or personal data. In production, TLS would terminate at a reverse
+proxy (Caddy/Nginx + Let's Encrypt) behind a domain.
+
 ## Architecture
 
 ```
@@ -31,10 +37,11 @@ Camera + detection model  →  FastAPI (REST)  →  PostgreSQL
 |---|---|---|
 | Database | PostgreSQL 16 (Docker), SQLAlchemy 2, Alembic migrations | ✅ |
 | REST API | FastAPI + Pydantic, OpenAPI docs | ✅ events, devices, statistics |
-| Tests & CI | pytest (in-memory DB) + GitHub Actions on every push | ✅ 17 tests |
+| Tests & CI | pytest (in-memory DB) + GitHub Actions on every push | ✅ 19 tests |
 | Dashboard | Streamlit + Plotly: metrics, filterable events, analytics, device health, alert management | ✅ |
 | Alerts | Automatic on high-confidence falls; console + email channels, acknowledge workflow | ✅ |
-| Deployment | AWS EC2 + RDS, Docker Compose | planned |
+| Deployment | AWS EC2 + RDS (private), Docker Compose, Elastic IP | ✅ live |
+| Security | API-key auth on writes, HTML-escaped rendering, non-root containers | ✅ |
 
 ## Getting started
 
