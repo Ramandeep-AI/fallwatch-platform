@@ -30,8 +30,14 @@ proxy (Caddy/Nginx + Let's Encrypt) behind a domain.
 ```
 Camera + detection model  →  FastAPI (REST)  →  PostgreSQL
                                    ↓
-                     Streamlit dashboard · SMS/email alerts
+              Streamlit dashboard · email alerts · Expo push
+                                                       ↓
+                                     FallWatch Mobile (caregiver app)
 ```
+
+Mobile companion: [fallwatch-mobile](https://github.com/Ramandeep-AI/fallwatch-mobile)
+(React Native/Expo caregiver app — live status board, one-tap alert
+acknowledgement, push notifications).
 
 | Component | Technology | Status |
 |---|---|---|
@@ -109,6 +115,7 @@ run in CI on every push.
 | GET | `/api/v1/events/{id}` | single event with device/person details |
 | DELETE | `/api/v1/events/{id}` | remove an event |
 | GET | `/api/v1/devices` | list registered devices |
+| POST | `/api/v1/push-tokens` | register a mobile device for push alerts |
 | GET | `/api/v1/stats/summary` | headline metrics (totals, today, avg confidence) |
 | GET | `/api/v1/stats/daily` | events and falls per day |
 | GET | `/api/v1/stats/hourly` | event counts by hour of day |
@@ -131,8 +138,10 @@ Fall events at or above `ALERT_MIN_CONFIDENCE` (default 0.7) automatically
 create alert records and dispatch notifications in a background task, so the
 detection client never waits on delivery. Channels are pluggable: the console
 channel is always active; configuring `SMTP_HOST` (see `.env.example`)
-enables email. Caregivers acknowledge alerts from the dashboard's Alerts
-page.
+enables email; and mobile push activates automatically once a device running
+[FallWatch Mobile](https://github.com/Ramandeep-AI/fallwatch-mobile) registers
+its Expo push token via `POST /api/v1/push-tokens`. Caregivers acknowledge
+alerts from the dashboard's Alerts page or from the mobile app.
 
 ## Detection integration
 
