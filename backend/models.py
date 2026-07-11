@@ -60,6 +60,16 @@ class Event(Base):
     )
 
 
+class PushToken(Base):
+    """A mobile device registered to receive push alerts (Expo push tokens)."""
+    __tablename__ = "push_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(200), unique=True)
+    device_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Alert(Base):
     """A notification sent in response to an event."""
     __tablename__ = "alerts"

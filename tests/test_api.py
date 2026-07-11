@@ -179,6 +179,8 @@ def test_write_endpoints_require_api_key_when_configured(client, monkeypatch):
     assert make_event(client).status_code == 401
     assert client.post("/api/v1/alerts/1/acknowledge").status_code == 401
     assert client.delete("/api/v1/events/1").status_code == 401
+    assert client.post("/api/v1/push-tokens",
+                       json={"token": "ExponentPushToken[x]"}).status_code == 401
 
     ok = client.post("/api/v1/events", headers={"X-API-Key": "test-secret"},
                      json={"device_id": 1, "person_id": 1,
@@ -186,3 +188,52 @@ def test_write_endpoints_require_api_key_when_configured(client, monkeypatch):
     assert ok.status_code == 201
     # reads stay public
     assert client.get("/api/v1/events").status_code == 200
+
+
+def test_register_push_token_is_idempotent(client):
+    payload = {"token": "ExponentPushToken[abc]", "device_name": "Pixel 8"}
+    first = client.post("/api/v1/push-tokens", json=payload).json()
+    second = client.post("/api/v1/push-tokens",
+                         json=payload | {"device_name": "Pixel 8 Pro"}).json()
+    assert second["id"] == first["id"]  # same token row, refreshed
+    assert second["device_name"] == "Pixel 8 Pro"
+
+
+def test_register_push_token_rejects_empty(client):
+    assert client.post("/api/v1/push-tokens", json={"token": ""}).status_code == 422
+
+
+def test_fall_alert_uses_push_channel_when_token_registered(client, monkeypatch):
+    from backend import notifications
+
+    sent = []
+
+    def fake_post(url, json, timeout):
+        sent.append((url, json))
+        class FakeResponse:
+            def raise_for_status(self):
+                pass
+            def json(self):
+                return {"data": [{"status": "ok"} for _ in json]}
+        return FakeResponse()
+
+    monkeypatch.setattr(notifications.requests, "post", fake_post)
+
+    client.post("/api/v1/push-tokens", json={"token": "ExponentPushToken[abc]"})
+    make_event(client, event_type="fall", confidence=0.92)
+
+    channels = {a["alert_type"] for a in client.get("/api/v1/alerts").json()}
+    assert channels == {"console", "push"}
+
+    # TestClient runs background tasks before returning, so delivery happened
+    assert len(sent) == 1
+    url, messages = sent[0]
+    assert url == notifications.EXPO_PUSH_URL
+    assert messages[0]["to"] == "ExponentPushToken[abc]"
+    assert messages[0]["title"].startswith("Fall detected")
+
+
+def test_fall_without_tokens_keeps_console_only(client):
+    make_event(client, event_type="fall", confidence=0.92)
+    channels = {a["alert_type"] for a in client.get("/api/v1/alerts").json()}
+    assert channels == {"console"}

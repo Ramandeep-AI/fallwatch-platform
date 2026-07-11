@@ -64,6 +64,21 @@ class EventListResponse(BaseModel):
     items: list[EventResponse]
 
 
+# ---- push tokens ----
+class PushTokenCreate(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+    device_name: str | None = Field(None, max_length=100)
+
+
+class PushTokenResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    token: str
+    device_name: str | None
+    created_at: datetime
+
+
 # ---- alerts ----
 class AlertResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

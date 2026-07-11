@@ -65,7 +65,10 @@ def create_event(payload: schemas.EventCreate,
                 event.id, event.event_type, event.device_id, event.confidence)
 
     if event.event_type == "fall" and event.confidence >= ALERT_MIN_CONFIDENCE:
-        for channel in notifications.configured_channels():
+        # tokens resolved here so dispatch stays session-free in the background
+        push_tokens = list(db.scalars(select(models.PushToken.token)))
+        for channel in notifications.configured_channels(
+                push_configured=bool(push_tokens)):
             db.add(models.Alert(event_id=event.id, alert_type=channel))
         db.commit()
         subject = f"Fall detected: {event.device.location}"
@@ -74,7 +77,7 @@ def create_event(payload: schemas.EventCreate,
                 f"(confidence {event.confidence:.2f})"
                 + (f" involving {event.person.name}." if event.person else "."))
         # delivered after the response returns; the detection client never waits
-        background_tasks.add_task(notifications.dispatch, subject, body)
+        background_tasks.add_task(notifications.dispatch, subject, body, push_tokens)
 
     return event
 
@@ -128,6 +131,29 @@ def delete_event(event_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, f"Event {event_id} not found")
     db.delete(event)
     db.commit()
+
+
+# ---------------- push tokens ----------------
+@app.post("/api/v1/push-tokens", response_model=schemas.PushTokenResponse,
+          status_code=201, tags=["push"],
+          dependencies=[Depends(require_api_key)])
+def register_push_token(payload: schemas.PushTokenCreate,
+                        db: Session = Depends(get_db)):
+    """Register (or refresh) a mobile device's Expo push token."""
+    existing = db.scalar(select(models.PushToken)
+                         .where(models.PushToken.token == payload.token))
+    if existing is not None:
+        if payload.device_name is not None:
+            existing.device_name = payload.device_name
+            db.commit()
+            db.refresh(existing)
+        return existing
+    row = models.PushToken(**payload.model_dump())
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    logger.info("push token registered: id=%s device=%s", row.id, row.device_name)
+    return row
 
 
 # ---------------- devices ----------------
