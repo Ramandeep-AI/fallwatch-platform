@@ -43,9 +43,9 @@ acknowledgement, push notifications).
 |---|---|---|
 | Database | PostgreSQL 16 (Docker), SQLAlchemy 2, Alembic migrations | ✅ |
 | REST API | FastAPI + Pydantic, OpenAPI docs | ✅ events, devices, statistics |
-| Tests & CI | pytest (in-memory DB) + GitHub Actions on every push | ✅ 19 tests |
+| Tests & CI | pytest (in-memory DB) + GitHub Actions on every push | ✅ 23 tests |
 | Dashboard | Streamlit + Plotly: metrics, filterable events, analytics, device health, alert management | ✅ |
-| Alerts | Automatic on high-confidence falls; console + email channels, acknowledge workflow | ✅ |
+| Alerts | Automatic on high-confidence falls; console, email and mobile push channels, acknowledge workflow | ✅ |
 | Deployment | AWS EC2 + RDS (private), Docker Compose, Elastic IP | ✅ live |
 | Security | API-key auth on writes, HTML-escaped rendering, non-root containers | ✅ |
 
