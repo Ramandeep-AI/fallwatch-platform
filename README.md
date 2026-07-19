@@ -15,7 +15,7 @@ Companion project: [ai-fall-detection-prototype](https://github.com/Ramandeep-AI
 [![55-second live demo: a real fall detected on-device and alerted through AWS](docs/screenshots/system-in-action.png)](https://youtu.be/b-rTquYopj0)
 
 **[▶ Watch the 55-second unedited demo](https://youtu.be/b-rTquYopj0)** — a real
-(controlled, onto a mattress) fall is detected by the edge model, reported over
+(controlled) fall is detected by the edge model, reported over
 the internet to this platform on AWS, raises an alert on the live dashboard
 within seconds, and is acknowledged by the caregiver workflow.
 
